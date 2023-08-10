@@ -9,22 +9,18 @@ using System.Linq;
 
 public class MyBot : IChessBot
 {
-    const int MAX_DEPTH = 0;
+    const int MAX_DEPTH = 1;
 
     public Move Think(Board board, Timer timer)
     {
+
         Move[] moves = board.GetLegalMoves();
         int[] scores = new int[moves.Length];
 
         for(int index=0; index<moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            scores[index] = EvaluatePosition(board,MAX_DEPTH);
-
-            // Special move cases
-            scores[index] += (moves[index].IsPromotion) ? 20 : 0;
-            scores[index] += (moves[index].IsCastles) ? 10 : 0;
-
+            scores[index] = EvaluateMin(board,MAX_DEPTH);
             board.UndoMove(moves[index]);
         }
 
@@ -34,51 +30,80 @@ public class MyBot : IChessBot
         return moves[maxIndex];
     }
 
-    int EvaluatePosition(Board board, int depth)
+    int EvaluateMax(Board board, int depth)
     {
-        int max_score = 0;
+        int maxScore = int.MinValue;
+        int score = 0;
 
         if(depth == 0)
         {
-
-
-            // We may need to adjust the weights of these
-            // Who controls the center?
-            max_score += CenterScore(board);
-
-            // Decrease score for each unprotected piece
-            max_score -= UnprotectedPieces();
-
-            // Piece score
-            max_score += ScoreBoard();
-
-            // king-side Castle move should be given high weight, queenside, slightly less
-
-            return max_score;
+            return EvaluatePosition(board);
         }
 
+        // Generate positions
         Move[] moves = board.GetLegalMoves();
-        foreach(Move currentMove in moves)
+
+        for (int index = 0; index < moves.Length; ++index)
         {
-            int score = int.MinValue;
+            board.MakeMove(moves[index]);
+            score = EvaluateMin(board, depth-1);
+            board.UndoMove(moves[index]);
 
-            for (int index = 0; index < moves.Length; ++index)
+            if(score > maxScore)
             {
-                board.MakeMove(moves[index]);
-                score = EvaluatePosition(board, depth - 1);
-
-                if(score > max_score)
-                {
-                    max_score = score;
-                }
-
-                board.UndoMove(moves[index]);
+                maxScore = score;
             }
-
         }
 
-        int opponentMove = (depth % 2 == 0) ? 1 : -1;
-        return max_score * opponentMove;
+        return maxScore;
+    }
+
+    int EvaluateMin(Board board, int depth)
+    {
+        int minScore = int.MaxValue;
+        int score = 0;
+
+        if (depth == 0)
+        {
+            return EvaluatePosition(board);
+        }
+
+        // Generate positions
+        Move[] moves = board.GetLegalMoves();
+
+        for (int index = 0; index < moves.Length; ++index)
+        {
+            board.MakeMove(moves[index]);
+            score = EvaluateMax(board, depth - 1);
+            board.UndoMove(moves[index]);
+
+            if (score < minScore)
+            {
+                minScore = score;
+            }
+        }
+
+        return minScore;
+
+    }
+
+    int EvaluatePosition(Board board)
+    {
+        int score = 0;
+
+        // We may need to adjust the weights of these
+        // Who controls the center?
+        score += CenterScore(board);
+
+        // Decrease score for each unprotected piece
+        score -= UnprotectedPieces();
+
+        // Piece score
+        score += ScoreBoard();
+
+        // king-side Castle move should be given high weight, queenside, slightly less
+
+        return score;
     }
 
     int CenterScore(Board board)
