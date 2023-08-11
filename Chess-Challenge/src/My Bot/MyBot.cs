@@ -9,7 +9,7 @@ using System.Linq;
 
 public class MyBot : IChessBot
 {
-    const int MAX_DEPTH = 1;
+    const int MAX_DEPTH = 3;
 
     public Move Think(Board board, Timer timer)
     {
@@ -20,7 +20,7 @@ public class MyBot : IChessBot
         for(int index=0; index<moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            scores[index] = EvaluateMin(board,MAX_DEPTH);
+            scores[index] = EvaluateMin(board,MAX_DEPTH,int.MinValue, int.MaxValue);
             board.UndoMove(moves[index]);
         }
 
@@ -30,7 +30,7 @@ public class MyBot : IChessBot
         return moves[maxIndex];
     }
 
-    int EvaluateMax(Board board, int depth)
+    int EvaluateMax(Board board, int depth, int alpha, int beta)
     {
         int maxScore = int.MinValue;
         int score = 0;
@@ -46,19 +46,21 @@ public class MyBot : IChessBot
         for (int index = 0; index < moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            score = EvaluateMin(board, depth-1);
+            score = EvaluateMin(board, depth-1,alpha,beta);
             board.UndoMove(moves[index]);
 
-            if(score > maxScore)
+            maxScore = Max(score, maxScore);
+            alpha = Max(alpha, maxScore);
+            if (beta <= alpha)
             {
-                maxScore = score;
+                break;
             }
         }
 
         return maxScore;
     }
 
-    int EvaluateMin(Board board, int depth)
+    int EvaluateMin(Board board, int depth, int alpha, int beta)
     {
         int minScore = int.MaxValue;
         int score = 0;
@@ -74,12 +76,15 @@ public class MyBot : IChessBot
         for (int index = 0; index < moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            score = EvaluateMax(board, depth - 1);
+            score = EvaluateMax(board, depth - 1,alpha,beta);
             board.UndoMove(moves[index]);
 
-            if (score < minScore)
+            minScore = Min(score, minScore);
+            beta = Min(beta, minScore);
+
+            if(beta <= alpha)
             {
-                minScore = score;
+                break;
             }
         }
 
@@ -225,5 +230,15 @@ public class MyBot : IChessBot
         // Positive score means we have the best pieces, negative means they do
 
         return score;
+    }
+
+    static int Max(int a, int b)
+    {
+        return a > b ? a : b;
+    }
+
+    static int Min(int a, int b)
+    {
+        return a < b ? a : b;
     }
 }
