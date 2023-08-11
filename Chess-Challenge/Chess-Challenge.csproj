@@ -35,9 +35,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="src\MinMax\" />
-  </ItemGroup>
-  <ItemGroup>
     <None Update="resources\Fens.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -54,7 +51,6 @@
 
   <ItemGroup>
     <Folder Include="src\Framework\Chess\" />
-    <Folder Include="src\MinMax\" />
   </ItemGroup>
 
   <ItemGroup>
