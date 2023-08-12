@@ -26,7 +26,6 @@ public class MyBot : IChessBot
 
     public Move Think(Board board, Timer timer)
     {
-
         Move[] moves = board.GetLegalMoves();
         int[] scores = new int[moves.Length];
 
@@ -46,8 +45,7 @@ public class MyBot : IChessBot
     int EvaluateMax(Board board, int depth, int alpha, int beta)
     {
         int maxScore = int.MinValue;
-        int score = 0;
-
+        int score;
 
         if (depth == 0)
         {
@@ -122,7 +120,7 @@ public class MyBot : IChessBot
             boardScore.score += CenterScore(board);
 
             // Decrease score for each unprotected piece
-            boardScore.score -= UnprotectedPieces();
+            //boardScore.score -= UnprotectedPieces();
 
             // Piece score
             boardScore.score += ScoreBoard(board);
@@ -203,7 +201,23 @@ public class MyBot : IChessBot
         }
 
         // -1 point for bishop, queen, and knight on the edge
-        PieceList knightList = board.GetPieceList(PieceType.Knight, board.IsWhiteToMove);
+        PieceList[] pieceList = board.GetAllPieceLists();
+        PieceType[] target = new PieceType[] { PieceType.Queen, PieceType.Bishop, PieceType.Knight };
+        foreach(PieceList currentList in pieceList)
+        {
+            if (target.Contains<PieceType>(currentList.TypeOfPieceInList))
+            {
+                foreach (Piece currentPiece in currentList)
+                {
+                    if (currentPiece.Square.File == 0 || currentPiece.Square.File == 7)
+                    {
+                        score -= 1;
+                    }
+                }
+            }
+        }
+
+/*        PieceList knightList = board.GetPieceList(PieceType.Knight, board.IsWhiteToMove);
 
         foreach(Piece currentPiece in knightList)
         {
@@ -231,13 +245,13 @@ public class MyBot : IChessBot
             {
                 score -= 1;
             }
-        }
+        }*/
 
 
         return score;
     }
 
-    int UnprotectedPieces()
+    /*int UnprotectedPieces()
     {
         int score = 0;
 
@@ -247,7 +261,7 @@ public class MyBot : IChessBot
         // If 0 of our pieces are attacking that square, subtract 1
 
         return score;
-    }
+    }*/
 
     int LinkedRooks(Board board)
     {
