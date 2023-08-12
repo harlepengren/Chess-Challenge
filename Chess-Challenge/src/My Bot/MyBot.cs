@@ -6,10 +6,24 @@
 
 using ChessChallenge.API;
 using System.Linq;
+using System.Collections.Generic;
+
+public struct LUT
+{
+    public bool IsWhiteToMove;
+    public int score;
+    public Move nextMove;
+}
 
 public class MyBot : IChessBot
 {
     const int MAX_DEPTH = 3;
+    Dictionary<ulong,LUT> hashTable;
+
+    public MyBot()
+    {
+        hashTable = new Dictionary<ulong, LUT>();
+    }
 
     public Move Think(Board board, Timer timer)
     {
@@ -35,7 +49,8 @@ public class MyBot : IChessBot
         int maxScore = int.MinValue;
         int score = 0;
 
-        if(depth == 0)
+
+        if (depth == 0)
         {
             return EvaluatePosition(board);
         }
@@ -94,26 +109,35 @@ public class MyBot : IChessBot
 
     int EvaluatePosition(Board board)
     {
-        int score = 0;
+        // Do we already know the score for this board
+        LUT boardScore = new LUT();
 
-        // We may need to adjust the weights of these
-        // Who controls the center?
-        score += CenterScore(board);
+        if (!BoardLUT(board, ref boardScore))
+        {
+            // We don't know it yet
+            boardScore.IsWhiteToMove = board.IsWhiteToMove;
+            boardScore.score = 0;
 
-        // Decrease score for each unprotected piece
-        score -= UnprotectedPieces();
+            // We may need to adjust the weights of these
+            // Who controls the center?
+            boardScore.score += CenterScore(board);
 
-        // Piece score
-        score += ScoreBoard();
+            // Decrease score for each unprotected piece
+            boardScore.score -= UnprotectedPieces();
 
-        // Linked rooks
-        score += LinkedRooks(board);
+            // Piece score
+            boardScore.score += ScoreBoard();
 
+            // Linked rooks
+            boardScore.score += LinkedRooks(board);
 
-        // Checkmate
-        score += (board.IsInCheckmate()) ? 100 : 0;
+            // Checkmate
+            boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
 
-        return score;
+            // Add this to the LUT
+
+        }
+            return score;
     }
 
     int CenterScore(Board board)
@@ -259,6 +283,22 @@ public class MyBot : IChessBot
         // Positive score means we have the best pieces, negative means they do
 
         return score;
+    }
+
+    void AddHash(Board board, LUT lut)
+    {
+        hashTable.Add(board.ZobristKey, lut);
+    }
+
+    bool BoardLUT(Board board, ref LUT lut)
+    {
+        if (hashTable.ContainsKey(board.ZobristKey))
+        {
+            lut = hashTable[board.ZobristKey];
+            return true;
+        }
+
+        return false;
     }
 
     static int Max(int a, int b)
