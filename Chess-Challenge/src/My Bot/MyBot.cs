@@ -125,7 +125,7 @@ public class MyBot : IChessBot
             boardScore.score -= UnprotectedPieces();
 
             // Piece score
-            boardScore.score += ScoreBoard();
+            boardScore.score += ScoreBoard(board);
 
             // Linked rooks
             boardScore.score += LinkedRooks(board);
