@@ -273,16 +273,52 @@ public class MyBot : IChessBot
         return score;
     }
 
-    int ScoreBoard()
+    int ScoreBoard(Board board)
     {
         int score = 0;
+        int playerBonus = 1;
 
         // Who has the best pieces on the board?
         // {Q=20, R=15, N=10, B=8, P=1}
+        PieceList[] pieces = board.GetAllPieceLists();
+        foreach (PieceList currentPieces in pieces)
+        {
+            playerBonus = (board.IsWhiteToMove == currentPieces.IsWhitePieceList) ? 1 : -1;
+            score += ScorePiece(currentPieces.TypeOfPieceInList, currentPieces.Count) * playerBonus;
+        }
 
         // Positive score means we have the best pieces, negative means they do
 
         return score;
+    }
+
+    int ScorePiece(PieceType piece, int count)
+    {
+        int score = 0;
+
+        switch (piece)
+        {
+            case PieceType.Queen:
+                score = 20;
+                break;
+            case PieceType.Rook:
+                score = 15;
+                break;
+            case PieceType.Bishop:
+                score = 8;
+                break;
+            case PieceType.Knight:
+                score = 10;
+                break;
+            case PieceType.Pawn:
+                score = 1;
+                break;
+            default:
+                score = 0;
+                break;
+        }
+
+        return score * count;
     }
 
     void AddHash(Board board, LUT lut)
