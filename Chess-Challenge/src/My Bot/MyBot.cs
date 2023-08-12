@@ -12,7 +12,6 @@ public struct LUT
 {
     public bool IsWhiteToMove;
     public int score;
-    public Move nextMove;
 }
 
 public class MyBot : IChessBot
@@ -135,9 +134,10 @@ public class MyBot : IChessBot
             boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
 
             // Add this to the LUT
-
+            AddHash(board, boardScore);
         }
-            return score;
+
+        return boardScore.score;
     }
 
     int CenterScore(Board board)
@@ -295,7 +295,11 @@ public class MyBot : IChessBot
         if (hashTable.ContainsKey(board.ZobristKey))
         {
             lut = hashTable[board.ZobristKey];
-            return true;
+
+            if(lut.IsWhiteToMove == board.IsWhiteToMove)
+            {
+                return true;
+            }
         }
 
         return false;
