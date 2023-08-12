@@ -1,0 +1,3 @@
+[submodule "Chess-Challenge/src/Stockfish.NET"]
+	path = Chess-Challenge/src/Stockfish.NET
+	url = https://github.com/Oremiro/Stockfish.NET.git

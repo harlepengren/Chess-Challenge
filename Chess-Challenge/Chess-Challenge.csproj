@@ -10,7 +10,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Raylib-cs" Version="4.5.0.2" />
+    <PackageReference Include="Raylib-cs" Version="4.5.0.3" />
+    <PackageReference Include="Stockfish.NET" Version="1.0.7" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="src\Stockfish.NET\Stockfish.NET.Tests\TestStockfishMethods.cs" />
+    <Compile Remove="src\Stockfish.NET\Stockfish.NET.Tests\Utils.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Update="src\My Bot\MyBot.cs">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Compile>
@@ -34,6 +39,11 @@
     </Compile>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Remove="src\Stockfish\" />
+    <None Remove="src\Stockfish.NET\Stockfish.NET.Tests\Stockfish\win\stockfish_12_win_x64\stockfish_20090216_x64.exe" />
+    <None Remove="src\Stockfish.NET\Stockfish.NET.Tests\Stockfish\linux\stockfish_12_linux_x64\stockfish_20090216_x64" />
+  </ItemGroup>
   <ItemGroup>
     <None Update="resources\Fens.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -51,6 +61,7 @@
 
   <ItemGroup>
     <Folder Include="src\Framework\Chess\" />
+    <Folder Include="src\Stockfish\" />
   </ItemGroup>
 
   <ItemGroup>
