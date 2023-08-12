@@ -106,7 +106,12 @@ public class MyBot : IChessBot
         // Piece score
         score += ScoreBoard();
 
-        // king-side Castle move should be given high weight, queenside, slightly less
+        // Linked rooks
+        score += LinkedRooks(board);
+
+
+        // Checkmate
+        score += (board.IsInCheckmate()) ? 100 : 0;
 
         return score;
     }
@@ -216,6 +221,30 @@ public class MyBot : IChessBot
         // foreach of our pieces
         // Get the position
         // If 0 of our pieces are attacking that square, subtract 1
+
+        return score;
+    }
+
+    int LinkedRooks(Board board)
+    {
+        int score = 0;
+
+        // Checks whether rooks are linked. If so, gives 5 points
+        // 1) Get the rooks
+        PieceList rooks = board.GetPieceList(PieceType.Rook, board.IsWhiteToMove);
+
+        if(rooks.Count == 2)
+        {
+            // 2) Are they on either the same file or same row?
+            bool sameRank = rooks.GetPiece(0).Square.Rank == rooks.GetPiece(1).Square.Rank;
+            bool sameFile = rooks.GetPiece(0).Square.File == rooks.GetPiece(1).Square.File;
+
+            if (sameRank || sameFile)
+            {
+                score += 1;
+            }
+
+        }
 
         return score;
     }
