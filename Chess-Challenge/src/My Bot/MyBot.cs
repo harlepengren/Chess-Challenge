@@ -217,37 +217,6 @@ public class MyBot : IChessBot
             }
         }
 
-/*        PieceList knightList = board.GetPieceList(PieceType.Knight, board.IsWhiteToMove);
-
-        foreach(Piece currentPiece in knightList)
-        {
-            if(currentPiece.Square.File == 0 || currentPiece.Square.File == 7)
-            {
-                score -= 1;
-            }
-        }
-
-        PieceList bishopList = board.GetPieceList(PieceType.Bishop, board.IsWhiteToMove);
-
-        foreach (Piece currentPiece in bishopList)
-        {
-            if (currentPiece.Square.File == 0 || currentPiece.Square.File == 7)
-            {
-                score -= 1;
-            }
-        }
-
-        PieceList queenList = board.GetPieceList(PieceType.Queen, board.IsWhiteToMove);
-
-        foreach (Piece currentPiece in queenList)
-        {
-            if (currentPiece.Square.File == 0 || currentPiece.Square.File == 7)
-            {
-                score -= 1;
-            }
-        }*/
-
-
         return score;
     }
 
