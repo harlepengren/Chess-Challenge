@@ -4,6 +4,7 @@
 // Moves are evaluated based on level of protection
 // Watch for forks
 
+using System;
 using ChessChallenge.API;
 using System.Linq;
 using System.Collections.Generic;
