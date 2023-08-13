@@ -21,9 +21,9 @@ namespace ChessChallenge.Application
                 var blackType = !controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.MyBot : ChallengeController.PlayerType.Human;
                 controller.StartNewGame(whiteType, blackType);
             }
-            if (NextButtonInRow("MyBot vs MyBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("MyBot vs Stockfish", ref buttonPos, spacing, buttonSize))
             {
-                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.MyBot);
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.StockfishBot);
             }
             if (NextButtonInRow("MyBot vs EvilBot", ref buttonPos, spacing, buttonSize))
             {

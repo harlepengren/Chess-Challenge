@@ -211,10 +211,9 @@ namespace ChessChallenge.Application
             return type switch
             {
                 PlayerType.MyBot => new ChessPlayer(new MyBot(), type, GameDurationMilliseconds),
-                PlayerType.EvilBot => new ChessPlayer(new StockfishBot.StockfishBot(), type, GameDurationMilliseconds),
-                _ => new ChessPlayer(new HumanPlayer(boardUI), type)
-                /*PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
-                _ => new ChessPlayer(new HumanPlayer(boardUI), type)*/
+                PlayerType.StockfishBot => new ChessPlayer(new StockfishBot.StockfishBot(), type, GameDurationMilliseconds),
+                PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
+                _ => new ChessPlayer(new HumanPlayer(boardUI), type),
             };
         }
 
