@@ -102,7 +102,7 @@ class Replay:
         if len(self._moves) > 0 and (re.match('[0-9](/2)?-[0-9]',self._moves[len(self._moves)-1]) != None):
             self.winner = self._moves[len(self._moves)-1]
             self._moves = self._moves[:-1]
-        else
+        else:
             self.winner = None
 
         if len(self._moves) > 0:

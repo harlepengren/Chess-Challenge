@@ -1,13 +1,13 @@
-from game import Replay
+from .game import Replay
 import json
-import Random
+import random
 
 class MoveExporter:
-    def OpenGame(filename):
+    def ProcessGame(self, filename):
         currentGame = Replay(filename)
 
         numMoves = currentGame.MoveCount()
-        randomMove = Random.randint(0,numMoves-1)
+        randomMove = random.randint(0,numMoves-1)
         currentGame.NextMove(randomMove)
 
         # Create the json entry
