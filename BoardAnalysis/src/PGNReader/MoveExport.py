@@ -1,6 +1,8 @@
 from .game import Replay
 import json
 import random
+import os
+import pathlib
 
 class MoveExporter:
     def ProcessGame(self, filename):
@@ -25,12 +27,23 @@ class MoveExporter:
 
         return gameDict
 
-    def LoadGames(self, directory):
-    '''Loads all games in a directory, processes them, and exports a json file.'''
+    def LoadGames(self, directory, outfile):
+        '''Loads all games in a directory, processes them, and exports a json file.'''
+
+        gameList = []
+
         # Check whether the directory is valid
-        # for each file in directory
-        # process game and add game to list
+        if(not os.path.exists(directory) or not os.path.isdir(directory)):
+            print("The directory either doesn't exist or is not a directory.")
+            return
+
+        # for each file in directory, process the game and add to the list
+        for currentFile in os.listdir(directory):
+            if os.path.isfile(directory + '/' + currentFile) and pathlib.Path(currentFile).suffix == '.pgn':
+                gameList.append(self.ProcessGame(directory + '/' + currentFile))
 
         # save the list as a JSON file
+        jsonString = json.dumps(gameList,indent=4)
 
-        pass
+        with open(outfile, "w") as out:
+            out.write(jsonString)
