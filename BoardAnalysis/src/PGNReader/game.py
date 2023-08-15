@@ -84,7 +84,7 @@ class Replay:
 
         if fileName != None:
             self.ReadFile(fileName)
-            self.CreateBoardPositions()
+            #self.CreateBoardPositions()
 
         #self._analysis = analysis
         #if analysis:
@@ -100,7 +100,14 @@ class Replay:
 
         # The last item in the moves list should specify who won (i.e., 1-0, 0-1, 1/2-1/2). Remove that from the moves list
         if len(self._moves) > 0 and (re.match('[0-9](/2)?-[0-9]',self._moves[len(self._moves)-1]) != None):
-            self.winner = self._moves[len(self._moves)-1]
+            gameResult = self._moves[len(self._moves)-1]
+            if(gameResult == '1-0'):
+                self.winner = 'w'
+            elif (gameResult == '0-1'):
+                self.winner = 'b'
+            else:
+                self.winner = 'draw'
+
             self._moves = self._moves[:-1]
         else:
             self.winner = None
@@ -167,6 +174,6 @@ class Replay:
         self.board.SetFEN(self._boardPositions[self.currentMove])
         print(self.board)
 
-    def MoveCount():
+    def MoveCount(self):
         return len(self._moves)
 
