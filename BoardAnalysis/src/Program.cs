@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Linq;
 
 namespace BoardAnalysis.Application
 {
@@ -18,51 +19,38 @@ namespace BoardAnalysis.Application
 
 			Evaluate evaluate = new Evaluate();
 
-			foreach(GameInfo currentGame in source)
+			for(int index=0; index<source.Count(); ++index)
 			{
+				GameInfo currentGame = source[index];
 				evaluate.LoadFEN(currentGame.FEN);
 				ScoreStruct currentScore = evaluate.EvaluatePosition();
-				Console.WriteLine(currentScore);
+
+				source[index].centerScore = currentScore.centerScore;
+				source[index].pieceScore = currentScore.pieceScore;
+				source[index].rookScore = currentScore.rooksScore;
+				source[index].checkmateScore = currentScore.checkmateScore;
 			}
+
+			string jsonString = JsonSerializer.Serialize<List<GameInfo>>(source);
+			Console.WriteLine(jsonString);
 		}
 
-        public static void Main()
+        public static void Main(string[] args)
         {
-			Console.WriteLine("Enter a json file: ");
-			string jsonFile = Console.ReadLine();
+			string jsonFile;
+
+			if(args.Count() == 0)
+			{
+                Console.WriteLine("Enter a json file: ");
+                jsonFile = Console.ReadLine();
+			}
+			else
+			{
+				jsonFile = args[0];
+			}
 
 			ReadFile(jsonFile);
 
-			/*string FEN;
-			ScoreStruct score;
-			List<string> inputFENs = new List<string>();
-			
-
-			do
-			{
-				Console.WriteLine("Input a FEN: ");
-				FEN = Console.ReadLine();
-				if(FEN != null)
-				{
-                    inputFENs.Add(FEN);
-                }
-			} while (FEN != null && !FEN.Contains("quit"));
-
-			// Process the FENs and output to a JSON file
-			foreach(string currentFEN in inputFENs)
-			{
-
-			}
-
-			// Input a FEN and output the scoring factors
-			Evaluate myEval = new Evaluate(FEN);
-
-			score = myEval.EvaluatePosition();
-
-			Console.WriteLine("Center Score: " + score.centerScore);
-			Console.WriteLine("Piece Score: " + score.pieceScore);
-			Console.WriteLine("Rook Score: " + score.rooksScore);
-			Console.WriteLine("Checkmate Score: " + score.checkmateScore);*/
 		}
 
 	}
@@ -73,6 +61,10 @@ namespace BoardAnalysis.Application
 		public int totalMoves { get; set; }
 		public int currentMove { get; set; }
 		public string winner { get; set; }
+		public int centerScore { get; set; }
+		public int pieceScore { get; set; }
+		public int rookScore { get; set; }
+		public int checkmateScore { get; set; }
 	}
 }
 
