@@ -112,6 +112,7 @@ class Replay:
         else:
             self.winner = None
 
+        print(self._moves)
         if len(self._moves) > 0:
             self.CreateBoardPositions()
     
@@ -134,6 +135,10 @@ class Replay:
         moves = re.split('\s',line)
         
         for move in moves:
+            match = re.search('[0-9]+\.',move)
+            if (match):
+                move = move[match.span()[1]:]
+
             if (re.search('[0-9]+\.',move) == None) and (move != ''):
                 self._moves.append(move)
 
@@ -156,7 +161,15 @@ class Replay:
         self.board.SetFEN(self._boardPositions[0])
         
     def ExecuteMove(self, move, player):
-        start, end, special = self.search.GetMove(move,player)
+
+        combined = self.search.GetMove(move,player)
+
+        if combined == None:
+            print("Error: " + move)
+            return self.board.ExportFEN(player)
+
+        start, end, special = combined
+
         self.board.MovePiece(start,end,special)
         return self.board.ExportFEN(player)
 

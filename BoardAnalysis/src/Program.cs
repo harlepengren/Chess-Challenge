@@ -32,7 +32,11 @@ namespace BoardAnalysis.Application
 			}
 
 			string jsonString = JsonSerializer.Serialize<List<GameInfo>>(source);
-			Console.WriteLine(jsonString);
+
+			using (StreamWriter outputFile = new StreamWriter("/Users/kkoehler/Downloads/test.json"))
+			{
+				outputFile.Write(jsonString);
+			}
 		}
 
         public static void Main(string[] args)
@@ -58,6 +62,7 @@ namespace BoardAnalysis.Application
 	public class GameInfo
 	{
 		public string FEN { get; set; }
+		//public List<string> tags { get; set; }
 		public int totalMoves { get; set; }
 		public int currentMove { get; set; }
 		public string winner { get; set; }
