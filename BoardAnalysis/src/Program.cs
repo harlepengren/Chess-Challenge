@@ -29,6 +29,8 @@ namespace BoardAnalysis.Application
 				source[index].pieceScore = currentScore.pieceScore;
 				source[index].rookScore = currentScore.rooksScore;
 				source[index].checkmateScore = currentScore.checkmateScore;
+				source[index].totalScore = currentScore.centerScore + currentScore.pieceScore + currentScore.rooksScore + currentScore.checkmateScore;
+				source[index].nextTurn = (currentGame.move % 2 == 0) ? 'w' : 'b';
 			}
 
 			string jsonString = JsonSerializer.Serialize<List<GameInfo>>(source);
@@ -64,12 +66,14 @@ namespace BoardAnalysis.Application
 		public string FEN { get; set; }
 		//public List<string> tags { get; set; }
 		public int totalMoves { get; set; }
-		public int currentMove { get; set; }
+		public int move { get; set; }
 		public string winner { get; set; }
 		public int centerScore { get; set; }
 		public int pieceScore { get; set; }
 		public int rookScore { get; set; }
 		public int checkmateScore { get; set; }
+		public int totalScore { get; set; }
+		public char nextTurn { get; set; }
 	}
 }
 
