@@ -17,7 +17,7 @@ public struct LUT
 
 public class MyBot : IChessBot
 {
-    const int MAX_DEPTH = 3;
+    int MAX_DEPTH = 3;
     Dictionary<ulong,LUT> hashTable;
 
     public MyBot()
@@ -29,6 +29,20 @@ public class MyBot : IChessBot
     {
         Move[] moves = board.GetLegalMoves();
         int[] scores = new int[moves.Length];
+
+        // Count the pieces on the board, if less than 15 increase the depth
+        ulong numPieces = 0;
+        ulong bitBoard = board.AllPiecesBitboard;
+        while (bitBoard != 0)
+        {
+            numPieces += bitBoard & 1;
+            bitBoard >>= 1;
+        }
+
+        if(numPieces < 10)
+        {
+            MAX_DEPTH = 5;
+        }
 
         for(int index=0; index<moves.Length; ++index)
         {
@@ -118,13 +132,22 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-            boardScore.score += CenterScore(board);
+
+            int centerWeight;
+            if(board.PlyCount < 40)
+            {
+                centerWeight = 2;
+            } else
+            {
+                centerWeight = 1;
+            }
+            boardScore.score += centerWeight * CenterScore(board);
 
             // Decrease score for each unprotected piece
-            //boardScore.score -= UnprotectedPieces();
+            boardScore.score -= UnprotectedPieces();
 
             // Piece score
-            boardScore.score += ScoreBoard(board);
+            boardScore.score += 2 * ScoreBoard(board);
 
             // Linked rooks
             boardScore.score += LinkedRooks(board);
