@@ -76,7 +76,7 @@ public class MyBot : IChessBot
     float EvaluateMin(Board board, int depth, float alpha, float beta)
     {
         float minScore = float.PositiveInfinity;
-        int score = 0;
+        float score = 0;
 
         if (depth == 0)
         {
