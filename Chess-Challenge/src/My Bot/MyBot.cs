@@ -12,7 +12,7 @@ using System.Collections.Generic;
 public struct LUT
 {
     public bool IsWhiteToMove;
-    public int score;
+    public float score;
 }
 
 public class MyBot : IChessBot
@@ -28,25 +28,25 @@ public class MyBot : IChessBot
     public Move Think(Board board, Timer timer)
     {
         Move[] moves = board.GetLegalMoves();
-        int[] scores = new int[moves.Length];
+        float[] scores = new float[moves.Length];
 
         for(int index=0; index<moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            scores[index] = EvaluateMin(board,MAX_DEPTH,int.MinValue, int.MaxValue);
+            scores[index] = EvaluateMin(board,MAX_DEPTH,float.NegativeInfinity, float.PositiveInfinity);
             board.UndoMove(moves[index]);
         }
 
-        int maxScore = scores.Max();
-        int maxIndex = scores.ToList<int>().IndexOf(maxScore);
+        float maxScore = scores.Max();
+        int maxIndex = scores.ToList<float>().IndexOf(maxScore);
 
         return moves[maxIndex];
     }
 
-    int EvaluateMax(Board board, int depth, int alpha, int beta)
+    float EvaluateMax(Board board, int depth, float alpha, float beta)
     {
-        int maxScore = int.MinValue;
-        int score;
+        float maxScore = float.NegativeInfinity;
+        float score;
 
         if (depth == 0)
         {
@@ -73,9 +73,9 @@ public class MyBot : IChessBot
         return maxScore;
     }
 
-    int EvaluateMin(Board board, int depth, int alpha, int beta)
+    float EvaluateMin(Board board, int depth, float alpha, float beta)
     {
-        int minScore = int.MaxValue;
+        float minScore = float.PositiveInfinity;
         int score = 0;
 
         if (depth == 0)
@@ -105,7 +105,7 @@ public class MyBot : IChessBot
 
     }
 
-    int EvaluatePosition(Board board)
+    float EvaluatePosition(Board board)
     {
         // Do we already know the score for this board
         LUT boardScore = new LUT();
@@ -221,7 +221,7 @@ public class MyBot : IChessBot
         return score;
     }
 
-    /*int UnprotectedPieces()
+    float UnprotectedPieces(Board board)
     {
         int score = 0;
 
@@ -229,9 +229,11 @@ public class MyBot : IChessBot
         // foreach of our pieces
         // Get the position
         // If 0 of our pieces are attacking that square, subtract 1
+        ulong bitboard = board.AllPiecesBitboard;
+        ulong test = BitboardHelper.GetPieceAttacks(PieceType.Pawn, new Square("e2"), board, board.IsWhiteToMove);
 
         return score;
-    }*/
+    }
 
     int LinkedRooks(Board board)
     {
@@ -325,12 +327,12 @@ public class MyBot : IChessBot
         return false;
     }
 
-    static int Max(int a, int b)
+    static float Max(float a, float b)
     {
         return a > b ? a : b;
     }
 
-    static int Min(int a, int b)
+    static float Min(float a, float b)
     {
         return a < b ? a : b;
     }
