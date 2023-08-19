@@ -28,6 +28,7 @@ namespace BoardAnalysis.Application
 				source[index].centerScore = currentScore.centerScore;
 				source[index].pieceScore = currentScore.pieceScore;
 				source[index].rookScore = currentScore.rooksScore;
+				source[index].unprotectedScore = currentScore.unprotectedScore;
 				source[index].checkmateScore = currentScore.checkmateScore;
 				source[index].totalScore = currentScore.centerScore + currentScore.pieceScore + currentScore.rooksScore + currentScore.checkmateScore;
 				source[index].nextTurn = (currentGame.move % 2 == 0) ? 'w' : 'b';
@@ -68,12 +69,13 @@ namespace BoardAnalysis.Application
 		public int totalMoves { get; set; }
 		public int move { get; set; }
 		public string winner { get; set; }
-		public int centerScore { get; set; }
-		public int pieceScore { get; set; }
-		public int rookScore { get; set; }
-		public int checkmateScore { get; set; }
-		public int totalScore { get; set; }
+		public float centerScore { get; set; }
+		public float pieceScore { get; set; }
+		public float rookScore { get; set; }
+		public float checkmateScore { get; set; }
+		public float totalScore { get; set; }
 		public char nextTurn { get; set; }
+		public float unprotectedScore { get; set; }
 	}
 }
 

@@ -1,14 +1,16 @@
 ﻿using System;
+using System.Collections;
 using ChessChallenge.API;
 
 namespace BoardAnalysis.Application
 {
     public struct ScoreStruct
     {
-        public int centerScore;
-        public int pieceScore;
-        public int rooksScore;
-        public int checkmateScore;
+        public float centerScore;
+        public float pieceScore;
+        public float rooksScore;
+        public float checkmateScore;
+        public float unprotectedScore;
     }
 
 	public class Evaluate
@@ -30,75 +32,78 @@ namespace BoardAnalysis.Application
 
         public ScoreStruct EvaluatePosition()
         {
-            ScoreStruct scoreStruct = new ScoreStruct();
+            // Do we already know the score for this board
+            LUT boardScore;
+            ScoreStruct score;
 
+            // We don't know it yet
+            boardScore.IsWhiteToMove = board.IsWhiteToMove;
+            boardScore.score = 0;
+
+            // We may need to adjust the weights of these
             // Who controls the center?
-            scoreStruct.centerScore = CenterScore(board);
+            float centerWeight = 1 + 2 / board.PlyCount;
+            boardScore.score += centerWeight * CenterScore(board);
+            score.centerScore = centerWeight * CenterScore(board);
 
             // Decrease score for each unprotected piece
-            //int unprotectedScore = UnprotectedPieces();
+            boardScore.score -= UnprotectedPieces(board);
+            score.unprotectedScore = UnprotectedPieces(board);
 
             // Piece score
-            scoreStruct.pieceScore = ScoreBoard(board);
+            boardScore.score += 3 * (ScoreBoard(board, board.IsWhiteToMove) - ScoreBoard(board, !board.IsWhiteToMove));
+            score.pieceScore = 3 * (ScoreBoard(board, board.IsWhiteToMove) - ScoreBoard(board, !board.IsWhiteToMove));
 
             // Linked rooks
-            scoreStruct.rooksScore = LinkedRooks(board);
+            boardScore.score += 0.5f * LinkedRooks(board);
+            score.rooksScore = 0.5f * LinkedRooks(board);
 
-            // Checkmate
-            scoreStruct.checkmateScore = (board.IsInCheckmate()) ? 100 : 0;
-
-
-            return scoreStruct;
-        }
-
-        int CenterScore(Board board)
-        {
-            int score = 0;
-            int whitePieces = 0;
-            int blackPieces = 0;
-            Piece[] centerPieces = new Piece[] {board.GetPiece(new Square("d4")),
-                board.GetPiece(new Square("d5")),
-                board.GetPiece(new Square("e4")),
-                board.GetPiece(new Square("e5"))};
-
-            // 3 points for every piece in the center four squares
-            foreach (Piece currentPiece in centerPieces)
+            score.checkmateScore = 0;
+            if (board.IsInCheck())
             {
-                if (currentPiece.PieceType != PieceType.None)
+                // Who is in check?
+                if (board.SquareIsAttackedByOpponent(board.GetKingSquare(board.IsWhiteToMove)))
                 {
-                    if (currentPiece.IsWhite)
-                    {
-                        whitePieces++;
-                    }
-                    else
-                    {
-                        blackPieces++;
-                    }
+                    boardScore.score -= 5;
+                    score.checkmateScore = -5;
+                }
+                else
+                {
+                    boardScore.score += 2;
+                    score.checkmateScore = 2;
                 }
             }
 
-            if (board.IsWhiteToMove)
-            {
-                score = (whitePieces - blackPieces) * 3;
-            }
-            else
-            {
-                score = (blackPieces - whitePieces) * 3;
-            }
 
-            // 2 points for every piece attacking but not in the center four squares
+            // Checkmate
+            score.checkmateScore += (board.IsInCheckmate()) ? 100 : 0;
+            boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
+
+            
+
+            return score;
+        }
+
+        float CenterScore(Board board)
+        {
+            // 3 Points for pieces in the center four squares
+            // 2 points for pieces in the next outer square
+            // 1 point for every piece attacking a center square
+
+            // 3 points for every piece in the center four squares
+            ulong bitboard = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+            ulong centerBits = 0x1818000000 & bitboard;
+            float score = BitboardHelper.GetNumberOfSetBits(centerBits) * 3;
+
+            // 2 points for out square
+            centerBits = 0x3c24243c0000 & bitboard;
+            score += BitboardHelper.GetNumberOfSetBits(centerBits) * 2;
+
+            // 1 points for every piece attacking but not in the center four squares
             Square[] centerSquares = new Square[] {new Square("d4"),
             new Square("d5"),
             new Square("e4"),
             new Square("e5")};
-
-            foreach (Square currentSquare in centerSquares)
-            {
-                if (board.SquareIsAttackedByOpponent(currentSquare))
-                {
-                    score -= 1;
-                }
-            }
 
             // Check our attacks on center 4
             if (board.TrySkipTurn())
@@ -114,40 +119,44 @@ namespace BoardAnalysis.Application
             }
 
             // -1 point for bishop, queen, and knight on the edge
-            PieceList[] pieceList = board.GetAllPieceLists();
-            PieceType[] target = new PieceType[] { PieceType.Queen, PieceType.Bishop, PieceType.Knight };
-            foreach (PieceList currentList in pieceList)
+            score -= BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, board.IsWhiteToMove) |
+                        board.GetPieceBitboard(PieceType.Bishop, board.IsWhiteToMove) |
+                        board.GetPieceBitboard(PieceType.Knight, board.IsWhiteToMove)) &
+                        0xff818181818181ff);
+
+            return score / 22;
+        }
+
+        float UnprotectedPieces(Board board)
+        {
+            int score = 0;
+            ulong pieces;
+
+            // 1 for every piece that is unprotected
+            pieces = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+            while (pieces > 0)
             {
-                if (target.Contains<PieceType>(currentList.TypeOfPieceInList))
+                int index = BitboardHelper.ClearAndGetIndexOfLSB(ref pieces);
+
+                // convert bitboard index to square and check if square is attacked
+                // if attacked, how much support do we have?
+                if (board.SquareIsAttackedByOpponent(new Square(index)))
                 {
-                    foreach (Piece currentPiece in currentList)
+                    score += 1;
+                    if (board.TrySkipTurn())
                     {
-                        if (currentPiece.Square.File == 0 || currentPiece.Square.File == 7)
-                        {
-                            score -= 1;
-                        }
+                        score -= 1;
+                        board.UndoSkipTurn();
                     }
                 }
             }
 
-            return score;
+            return score / 16;
         }
 
-        /*int UnprotectedPieces()
+        float LinkedRooks(Board board)
         {
-            int score = 0;
-
-            // 1 for every piece that is unprotected
-            // foreach of our pieces
-            // Get the position
-            // If 0 of our pieces are attacking that square, subtract 1
-
-            return score;
-        }*/
-
-        int LinkedRooks(Board board)
-        {
-            int score = 0;
+            float score = 0;
 
             // Checks whether rooks are linked. If so, gives 5 points
             // 1) Get the rooks
@@ -169,52 +178,29 @@ namespace BoardAnalysis.Application
             return score;
         }
 
-        int ScoreBoard(Board board)
+        int ScoreBoard(Board board, bool isWhite)
         {
             int score = 0;
-            int playerBonus = 1;
 
             // Who has the best pieces on the board?
-            // {Q=20, R=15, N=10, B=8, P=1}
-            PieceList[] pieces = board.GetAllPieceLists();
-            foreach (PieceList currentPieces in pieces)
-            {
-                playerBonus = (board.IsWhiteToMove == currentPieces.IsWhitePieceList) ? 1 : -1;
-                score += ScorePiece(currentPieces.TypeOfPieceInList, currentPieces.Count) * playerBonus;
-            }
+            // {Q=20, R=15, B=8, N=8, P=1}
+            score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Queen, isWhite)) * 20 +
+                     BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Rook, isWhite)) * 15 +
+                     BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Bishop, isWhite)) * 10 +
+                     BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Knight, isWhite)) * 8 +
+                     BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Pawn, isWhite)) * 1;
 
-            // Positive score means we have the best pieces, negative means they do
-
-            return score;
+            return score / 94;
         }
 
-        int ScorePiece(PieceType piece, int count)
+        static float Max(float a, float b)
         {
-            int score = 0;
+            return a > b ? a : b;
+        }
 
-            switch (piece)
-            {
-                case PieceType.Queen:
-                    score = 20;
-                    break;
-                case PieceType.Rook:
-                    score = 15;
-                    break;
-                case PieceType.Bishop:
-                    score = 8;
-                    break;
-                case PieceType.Knight:
-                    score = 10;
-                    break;
-                case PieceType.Pawn:
-                    score = 1;
-                    break;
-                default:
-                    score = 0;
-                    break;
-            }
-
-            return score * count;
+        static float Min(float a, float b)
+        {
+            return a < b ? a : b;
         }
     }
 }
