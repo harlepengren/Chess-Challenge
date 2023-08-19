@@ -144,7 +144,7 @@ public class MyBot : IChessBot
             boardScore.score -= UnprotectedPieces(board);
 
             // Piece score
-            boardScore.score += 3*ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove);
+            boardScore.score += 3*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
 
             // Linked rooks
             boardScore.score += 0.5f*LinkedRooks(board);
