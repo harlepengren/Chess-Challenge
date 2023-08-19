@@ -12,7 +12,7 @@ using System.Collections.Generic;
 public struct LUT
 {
     public bool IsWhiteToMove;
-    public int score;
+    public float score;
 }
 
 public class MyBot : IChessBot
@@ -28,7 +28,12 @@ public class MyBot : IChessBot
     public Move Think(Board board, Timer timer)
     {
         Move[] moves = board.GetLegalMoves();
-        int[] scores = new int[moves.Length];
+        float[] scores = new float[moves.Length];
+
+        if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
+        {
+            MAX_DEPTH = 5;
+        }
 
         // Count the pieces on the board, if less than 15 increase the depth
         ulong numPieces = 0;
@@ -47,20 +52,20 @@ public class MyBot : IChessBot
         for(int index=0; index<moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            scores[index] = EvaluateMin(board,MAX_DEPTH,int.MinValue, int.MaxValue);
+            scores[index] = EvaluateMin(board,MAX_DEPTH,float.NegativeInfinity, float.PositiveInfinity);
             board.UndoMove(moves[index]);
         }
 
-        int maxScore = scores.Max();
-        int maxIndex = scores.ToList<int>().IndexOf(maxScore);
+        float maxScore = scores.Max();
+        int maxIndex = scores.ToList<float>().IndexOf(maxScore);
 
         return moves[maxIndex];
     }
 
-    int EvaluateMax(Board board, int depth, int alpha, int beta)
+    float EvaluateMax(Board board, int depth, float alpha, float beta)
     {
-        int maxScore = int.MinValue;
-        int score;
+        float maxScore = float.NegativeInfinity;
+        float score;
 
         if (depth == 0)
         {
@@ -87,10 +92,10 @@ public class MyBot : IChessBot
         return maxScore;
     }
 
-    int EvaluateMin(Board board, int depth, int alpha, int beta)
+    float EvaluateMin(Board board, int depth, float alpha, float beta)
     {
-        int minScore = int.MaxValue;
-        int score = 0;
+        float minScore = float.PositiveInfinity;
+        float score = 0;
 
         if (depth == 0)
         {
@@ -119,7 +124,7 @@ public class MyBot : IChessBot
 
     }
 
-    int EvaluatePosition(Board board)
+    float EvaluatePosition(Board board)
     {
         // Do we already know the score for this board
         LUT boardScore = new LUT();
@@ -132,22 +137,14 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-
-            int centerWeight;
-            if(board.PlyCount < 40)
-            {
-                centerWeight = 2;
-            } else
-            {
-                centerWeight = 1;
-            }
-            boardScore.score += centerWeight * CenterScore(board);
+            float centerWeight = 1 + 2 / board.PlyCount;
+            boardScore.score += centerWeight*CenterScore(board);
 
             // Decrease score for each unprotected piece
-            boardScore.score -= UnprotectedPieces();
+            boardScore.score -= UnprotectedPieces(board);
 
             // Piece score
-            boardScore.score += 3*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
+            boardScore.score += 3*ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove);
 
             // Linked rooks
             boardScore.score += 0.5f*LinkedRooks(board);
@@ -176,54 +173,26 @@ public class MyBot : IChessBot
         return boardScore.score;
     }
 
-    int CenterScore(Board board)
+    float CenterScore(Board board)
     {
-        int score = 0;
-        int whitePieces = 0;
-        int blackPieces = 0;
-        Piece[] centerPieces = new Piece[] {board.GetPiece(new Square("d4")),
-                board.GetPiece(new Square("d5")),
-                board.GetPiece(new Square("e4")),
-                board.GetPiece(new Square("e5"))};
+        // 3 Points for pieces in the center four squares
+        // 2 points for pieces in the next outer square
+        // 1 point for every piece attacking a center square
 
         // 3 points for every piece in the center four squares
-        foreach (Piece currentPiece in centerPieces)
-        {
-            if(currentPiece.PieceType != PieceType.None)
-            {        
-                if (currentPiece.IsWhite)
-                {
-                    whitePieces++;
-                }
-                else
-                {
-                    blackPieces++;
-                }   
-            }
-        }
+        ulong bitboard = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+        ulong centerBits = 0x1818000000 & bitboard;
+        float score = BitboardHelper.GetNumberOfSetBits(centerBits)*3;
 
-        if (board.IsWhiteToMove)
-        {
-            score = (whitePieces - blackPieces) * 3;
-        }
-        else
-        {
-            score = (blackPieces - whitePieces) * 3;
-        }
+        // 2 points for out square
+        centerBits = 0x3c24243c0000 & bitboard;
+        score += BitboardHelper.GetNumberOfSetBits(centerBits) * 2;
 
-        // 2 points for every piece attacking but not in the center four squares
+        // 1 points for every piece attacking but not in the center four squares
         Square[] centerSquares = new Square[] {new Square("d4"),
             new Square("d5"),
             new Square("e4"),
             new Square("e5")};
-
-        foreach(Square currentSquare in centerSquares)
-        {
-            if (board.SquareIsAttackedByOpponent(currentSquare))
-            {
-                score -= 1;
-            }
-        }
 
         // Check our attacks on center 4
         if (board.TrySkipTurn())
@@ -239,40 +208,44 @@ public class MyBot : IChessBot
         }
 
         // -1 point for bishop, queen, and knight on the edge
-        PieceList[] pieceList = board.GetAllPieceLists();
-        PieceType[] target = new PieceType[] { PieceType.Queen, PieceType.Bishop, PieceType.Knight };
-        foreach(PieceList currentList in pieceList)
+        score -= BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, board.IsWhiteToMove) |
+                    board.GetPieceBitboard(PieceType.Bishop, board.IsWhiteToMove) |
+                    board.GetPieceBitboard(PieceType.Knight, board.IsWhiteToMove)) &
+                    0xff818181818181ff);
+
+        return score/22;
+    }
+
+    float UnprotectedPieces(Board board)
+    {
+        int score = 0;
+        ulong pieces;
+
+        // 1 for every piece that is unprotected
+        pieces = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+        while(pieces > 0)
         {
-            if (target.Contains<PieceType>(currentList.TypeOfPieceInList))
+            int index = BitboardHelper.ClearAndGetIndexOfLSB(ref pieces);
+
+            // convert bitboard index to square and check if square is attacked
+            // if attacked, how much support do we have?
+            if(board.SquareIsAttackedByOpponent(new Square(index)))
             {
-                foreach (Piece currentPiece in currentList)
+                score += 1;
+                if (board.TrySkipTurn())
                 {
-                    if (currentPiece.Square.File == 0 || currentPiece.Square.File == 7)
-                    {
-                        score -= 1;
-                    }
+                    score -= 1;
+                    board.UndoSkipTurn();
                 }
             }
         }
 
-        return score;
+        return score/16;
     }
 
-    /*int UnprotectedPieces()
+    float LinkedRooks(Board board)
     {
-        int score = 0;
-
-        // 1 for every piece that is unprotected
-        // foreach of our pieces
-        // Get the position
-        // If 0 of our pieces are attacking that square, subtract 1
-
-        return score;
-    }*/
-
-    int LinkedRooks(Board board)
-    {
-        int score = 0;
+        float score = 0;
 
         // Checks whether rooks are linked. If so, gives 5 points
         // 1) Get the rooks
@@ -294,52 +267,19 @@ public class MyBot : IChessBot
         return score;
     }
 
-    int ScoreBoard(Board board)
+    int ScoreBoard(Board board,bool isWhite)
     {
         int score = 0;
-        int playerBonus = 1;
 
         // Who has the best pieces on the board?
-        // {Q=20, R=15, N=10, B=8, P=1}
-        PieceList[] pieces = board.GetAllPieceLists();
-        foreach (PieceList currentPieces in pieces)
-        {
-            playerBonus = (board.IsWhiteToMove == currentPieces.IsWhitePieceList) ? 1 : -1;
-            score += ScorePiece(currentPieces.TypeOfPieceInList, currentPieces.Count) * playerBonus;
-        }
+        // {Q=20, R=15, B=8, N=8, P=1}
+        score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Queen, isWhite)) * 20 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Rook, isWhite)) * 15 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Bishop, isWhite)) * 10 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Knight, isWhite)) * 8 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Pawn, isWhite)) * 1;
 
-        // Positive score means we have the best pieces, negative means they do
-
-        return score;
-    }
-
-    int ScorePiece(PieceType piece, int count)
-    {
-        int score = 0;
-
-        switch (piece)
-        {
-            case PieceType.Queen:
-                score = 20;
-                break;
-            case PieceType.Rook:
-                score = 15;
-                break;
-            case PieceType.Bishop:
-                score = 8;
-                break;
-            case PieceType.Knight:
-                score = 10;
-                break;
-            case PieceType.Pawn:
-                score = 1;
-                break;
-            default:
-                score = 0;
-                break;
-        }
-
-        return score * count;
+        return score/94;
     }
 
     void AddHash(Board board, LUT lut)
@@ -362,13 +302,14 @@ public class MyBot : IChessBot
         return false;
     }
 
-    static int Max(int a, int b)
+    static float Max(float a, float b)
     {
         return a > b ? a : b;
     }
 
-    static int Min(int a, int b)
+    static float Min(float a, float b)
     {
         return a < b ? a : b;
     }
+
 }
