@@ -147,10 +147,24 @@ public class MyBot : IChessBot
             boardScore.score -= UnprotectedPieces();
 
             // Piece score
-            boardScore.score += 2 * ScoreBoard(board);
+            boardScore.score += 3*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
 
             // Linked rooks
-            boardScore.score += LinkedRooks(board);
+            boardScore.score += 0.5f*LinkedRooks(board);
+
+            if (board.IsInCheck())
+            {
+                // Who is in check?
+                if (board.SquareIsAttackedByOpponent(board.GetKingSquare(board.IsWhiteToMove)))
+                {
+                    boardScore.score -= 5;
+                }
+                else
+                {
+                    boardScore.score += 2;
+                }
+            }
+
 
             // Checkmate
             boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
