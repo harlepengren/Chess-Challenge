@@ -149,6 +149,9 @@ public class MyBot : IChessBot
             // Linked rooks
             boardScore.score += 0.5f*LinkedRooks(board);
 
+            // Pawn
+            boardScore.score += PawnCheck(board);
+
             if (board.IsInCheck())
             {
                 // Who is in check?
@@ -166,11 +169,26 @@ public class MyBot : IChessBot
             // Checkmate
             boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
 
+            
+
             // Add this to the LUT
             AddHash(board, boardScore);
         }
 
         return boardScore.score;
+    }
+
+    float PawnCheck(Board board)
+    {
+        ulong playerBoard = board.GetPieceBitboard(PieceType.Pawn,board.IsWhiteToMove);
+        ulong targetRank = (ulong)(board.IsWhiteToMove ? 0x00ff000000000000 : 0x000000000000ff00);
+
+        if((playerBoard & targetRank) > 0)
+        {
+            return 5;
+        }
+
+        return 0;
     }
 
     float CenterScore(Board board)
@@ -229,12 +247,17 @@ public class MyBot : IChessBot
 
             // convert bitboard index to square and check if square is attacked
             // if attacked, how much support do we have?
-            if(board.SquareIsAttackedByOpponent(new Square(index)))
+            Square currentSquare = new Square(index);
+            if(board.SquareIsAttackedByOpponent(currentSquare))
             {
                 score += 1;
                 if (board.TrySkipTurn())
                 {
-                    score -= 1;
+                    if (board.SquareIsAttackedByOpponent(currentSquare))
+                    {
+                        score -= 1;
+                    }
+
                     board.UndoSkipTurn();
                 }
             }
@@ -247,19 +270,29 @@ public class MyBot : IChessBot
     {
         float score = 0;
 
-        // Checks whether rooks are linked. If so, gives 5 points
-        // 1) Get the rooks
-        PieceList rooks = board.GetPieceList(PieceType.Rook, board.IsWhiteToMove);
+        ulong rooks = board.GetPieceBitboard(PieceType.Rook, board.IsWhiteToMove);
 
-        if(rooks.Count == 2)
+        if (BitboardHelper.GetNumberOfSetBits(rooks) == 2)
         {
-            // 2) Are they on either the same file or same row?
-            bool sameRank = rooks.GetPiece(0).Square.Rank == rooks.GetPiece(1).Square.Rank;
-            bool sameFile = rooks.GetPiece(0).Square.File == rooks.GetPiece(1).Square.File;
+            int[] rookIndex = new int[2];
+            rookIndex[0] = BitboardHelper.ClearAndGetIndexOfLSB(ref rooks);
+            rookIndex[1] = BitboardHelper.ClearAndGetIndexOfLSB(ref rooks);
 
-            if (sameRank || sameFile)
+            bool sameRow = rookIndex[0] / 8 == rookIndex[1] / 8;
+            bool sameColumn = rookIndex[0] % 8 == rookIndex[1] % 8;
+            if (sameRow || sameColumn)
             {
-                score += 1;
+                ulong blocker = 0x0;
+                ulong bitboard = board.AllPiecesBitboard;
+
+                int adjustment = (sameRow) ? 1 : 8;
+
+                for(int index = rookIndex[0] + 1; index < rookIndex[1]; index += adjustment)
+                {
+                    blocker |= ((bitboard >> index) & 0x1);
+                }
+
+                score += (blocker == 0) ? 1 : 0;
             }
 
         }
