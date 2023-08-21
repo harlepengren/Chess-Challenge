@@ -8,6 +8,8 @@ using System;
 using ChessChallenge.API;
 using System.Linq;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 
 public struct LUT
 {
@@ -15,14 +17,39 @@ public struct LUT
     public float score;
 }
 
+public class GameInfo
+{
+    public string FEN { get; set; }
+    public Move[] possibleMoves { get; set; }
+    public Move selectedMove { get; set; }
+    public float[] scores { get; set; }
+}
+
 public class MyBot : IChessBot
 {
     int MAX_DEPTH = 3;
     Dictionary<ulong,LUT> hashTable;
+    int currentMove;
+    int randomMoveNumber;
 
     public MyBot()
     {
         hashTable = new Dictionary<ulong, LUT>();
+
+        randomMoveNumber = GetRandomNumber();
+    }
+
+    int GetRandomNumber(float mean=0.5f,float std=0.2f)
+    {
+        Random rand = new Random();
+        double u1 = 1.0 - rand.NextDouble();
+        double u2 = 1.0 - rand.NextDouble();
+        double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+        double randNormal = mean + std * randStdNormal;
+
+        int myRandom = (int)(randNormal * 100);
+        return myRandom;
+
     }
 
     public Move Think(Board board, Timer timer)
@@ -44,6 +71,37 @@ public class MyBot : IChessBot
 
         float maxScore = scores.Max();
         int maxIndex = scores.ToList<float>().IndexOf(maxScore);
+
+        /***********************DEBUG ONLY************************/
+        // Randomly export a board, selected move, and options.
+        
+        if(board.PlyCount > randomMoveNumber)
+        {
+            GameInfo info = new GameInfo();
+            info.FEN = board.GetFenString();
+            info.possibleMoves = moves;
+            info.scores = scores;
+            info.selectedMove = moves[maxIndex];
+
+            try
+            {
+                var options = new JsonSerializerOptions { WriteIndented = true };
+                string jsonString = JsonSerializer.Serialize<GameInfo>(info, options);
+
+                using (StreamWriter outputFile = new StreamWriter("/Users/kkoehler/Downloads/myBot.json", true))
+                {
+                    outputFile.Write(jsonString);
+                }
+            }
+            catch
+            {
+                Console.WriteLine("Failed json");
+            }
+
+            randomMoveNumber = 1000;
+            //randomMoveNumber = GetRandomNumber();
+        }
+        /*********************************************************/
 
         return moves[maxIndex];
     }
