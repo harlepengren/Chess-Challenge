@@ -23,15 +23,20 @@ namespace BoardAnalysis.Application
 			{
 				GameInfo currentGame = source[index];
 				evaluate.LoadFEN(currentGame.FEN);
-				ScoreStruct currentScore = evaluate.EvaluatePosition();
+				GameInfo currentScore = evaluate.EvaluatePosition();
 
 				source[index].centerScore = currentScore.centerScore;
-				source[index].pieceScore = currentScore.pieceScore;
-				source[index].rookScore = currentScore.rooksScore;
+				source[index].oppCenterScore = currentScore.oppCenterScore;
+				source[index].centerAttackScore = currentScore.centerAttackScore;
+				source[index].oppAttackScore = currentScore.oppAttackScore;
+                source[index].slidingEdgeScore = currentScore.slidingEdgeScore;
+                source[index].pieceScore = currentScore.pieceScore;
+				source[index].oppPieceScore = currentScore.oppPieceScore;
+                source[index].rookScore = currentScore.rookScore;
 				source[index].unprotectedScore = currentScore.unprotectedScore;
 				source[index].checkmateScore = currentScore.checkmateScore;
-				source[index].totalScore = currentScore.centerScore + currentScore.pieceScore + currentScore.rooksScore + currentScore.checkmateScore;
-				source[index].nextTurn = (currentGame.move % 2 == 0) ? 'w' : 'b';
+				source[index].totalScore = currentScore.centerScore + currentScore.pieceScore + currentScore.rookScore + currentScore.checkmateScore;
+				source[index].nextTurn = currentScore.nextTurn;
 			}
 
 			string jsonString = JsonSerializer.Serialize<List<GameInfo>>(source);
@@ -62,20 +67,6 @@ namespace BoardAnalysis.Application
 
 	}
 
-	public class GameInfo
-	{
-		public string FEN { get; set; }
-		//public List<string> tags { get; set; }
-		public int totalMoves { get; set; }
-		public int move { get; set; }
-		public string winner { get; set; }
-		public float centerScore { get; set; }
-		public float pieceScore { get; set; }
-		public float rookScore { get; set; }
-		public float checkmateScore { get; set; }
-		public float totalScore { get; set; }
-		public char nextTurn { get; set; }
-		public float unprotectedScore { get; set; }
-	}
+	
 }
 
