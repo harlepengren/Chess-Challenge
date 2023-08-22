@@ -23,6 +23,7 @@ public class GameInfo
     public Move[] possibleMoves { get; set; }
     public Move selectedMove { get; set; }
     public float[] scores { get; set; }
+    public int move { get; set; }
 }
 
 public class MyBot : IChessBot
@@ -39,16 +40,10 @@ public class MyBot : IChessBot
         randomMoveNumber = GetRandomNumber();
     }
 
-    int GetRandomNumber(float mean=0.5f,float std=0.2f)
+    int GetRandomNumber()
     {
         Random rand = new Random();
-        double u1 = 1.0 - rand.NextDouble();
-        double u2 = 1.0 - rand.NextDouble();
-        double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
-        double randNormal = mean + std * randStdNormal;
-
-        int myRandom = (int)(randNormal * 100);
-        return myRandom;
+        return rand.Next(2, 20);
 
     }
 
@@ -60,6 +55,9 @@ public class MyBot : IChessBot
         if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
         {
             MAX_DEPTH = 5;
+        } else if(timer.MillisecondsRemaining < 10000)
+        {
+            MAX_DEPTH = 3;
         }
 
         for(int index=0; index<moves.Length; ++index)
@@ -82,11 +80,12 @@ public class MyBot : IChessBot
             info.possibleMoves = moves;
             info.scores = scores;
             info.selectedMove = moves[maxIndex];
+            info.move = board.PlyCount;
 
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string jsonString = JsonSerializer.Serialize<GameInfo>(info, options);
+                //var options = new JsonSerializerOptions { WriteIndented = true };
+                string jsonString = JsonSerializer.Serialize<GameInfo>(info) + ", ";
 
                 using (StreamWriter outputFile = new StreamWriter("/Users/kkoehler/Downloads/myBot.json", true))
                 {
