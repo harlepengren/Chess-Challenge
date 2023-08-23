@@ -63,7 +63,7 @@ public class MyBot : IChessBot
         for(int index=0; index<moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            scores[index] = EvaluateMin(board,MAX_DEPTH,float.NegativeInfinity, float.PositiveInfinity);
+            scores[index] = EvaluateMin(board,board.IsWhiteToMove, MAX_DEPTH,float.NegativeInfinity, float.PositiveInfinity);
             board.UndoMove(moves[index]);
         }
 
@@ -73,8 +73,8 @@ public class MyBot : IChessBot
         /***********************DEBUG ONLY************************/
         // Randomly export a board, selected move, and options.
         
-        if(board.PlyCount > randomMoveNumber)
-        {
+        /*if(board.PlyCount > randomMoveNumber)
+        {*/
             GameInfo info = new GameInfo();
             info.FEN = board.GetFenString();
             info.possibleMoves = moves;
@@ -99,20 +99,20 @@ public class MyBot : IChessBot
 
             randomMoveNumber = 1000;
             //randomMoveNumber = GetRandomNumber();
-        }
+        //}
         /*********************************************************/
 
         return moves[maxIndex];
     }
 
-    float EvaluateMax(Board board, int depth, float alpha, float beta)
+    float EvaluateMax(Board board, bool playerIsWhite, int depth, float alpha, float beta)
     {
         float maxScore = float.NegativeInfinity;
         float score;
 
         if (depth == 0)
         {
-            return EvaluatePosition(board);
+            return EvaluatePosition(board, playerIsWhite);
         }
 
         // Generate positions
@@ -121,7 +121,7 @@ public class MyBot : IChessBot
         for (int index = 0; index < moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            score = EvaluateMin(board, depth-1,alpha,beta);
+            score = EvaluateMin(board, playerIsWhite, depth-1,alpha,beta);
             board.UndoMove(moves[index]);
 
             maxScore = Max(score, maxScore);
@@ -135,14 +135,14 @@ public class MyBot : IChessBot
         return maxScore;
     }
 
-    float EvaluateMin(Board board, int depth, float alpha, float beta)
+    float EvaluateMin(Board board, bool playerIsWhite, int depth, float alpha, float beta)
     {
         float minScore = float.PositiveInfinity;
         float score = 0;
 
         if (depth == 0)
         {
-            return EvaluatePosition(board);
+            return EvaluatePosition(board, playerIsWhite);
         }
 
         // Generate positions
@@ -151,7 +151,7 @@ public class MyBot : IChessBot
         for (int index = 0; index < moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
-            score = EvaluateMax(board, depth - 1,alpha,beta);
+            score = EvaluateMax(board, playerIsWhite, depth - 1,alpha,beta);
             board.UndoMove(moves[index]);
 
             minScore = Min(score, minScore);
@@ -167,7 +167,7 @@ public class MyBot : IChessBot
 
     }
 
-    float EvaluatePosition(Board board)
+    float EvaluatePosition(Board board, bool playerIsWhite)
     {
         // Do we already know the score for this board
         LUT boardScore = new LUT();
@@ -180,19 +180,19 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-            float centerWeight = 1 + 2 / board.PlyCount;
-            boardScore.score += centerWeight*CenterScore(board);
+            float centerWeight = 10;
+            boardScore.score += centerWeight*CenterScore(board,playerIsWhite);
 
             // Decrease score for each unprotected piece
-            boardScore.score -= UnprotectedPieces(board);
+            boardScore.score -= UnprotectedPieces(board,playerIsWhite);
 
             // Piece score
-            boardScore.score += 3*ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove);
+            boardScore.score += 10*(ScoreBoard(board,playerIsWhite) - ScoreBoard(board,!playerIsWhite));
 
             // Linked rooks
-            boardScore.score += 0.5f*LinkedRooks(board);
+            boardScore.score += 0.5f*LinkedRooks(board,playerIsWhite);
 
-            if (board.IsInCheck())
+            /*if (board.IsInCheck())
             {
                 // Who is in check?
                 if (board.SquareIsAttackedByOpponent(board.GetKingSquare(board.IsWhiteToMove)))
@@ -203,7 +203,7 @@ public class MyBot : IChessBot
                 {
                     boardScore.score += 50;
                 }
-            }
+            }*/
 
 
             // Checkmate
@@ -216,14 +216,14 @@ public class MyBot : IChessBot
         return boardScore.score;
     }
 
-    float CenterScore(Board board)
+    float CenterScore(Board board, bool playerIsWhite)
     {
         // 3 Points for pieces in the center four squares
         // 2 points for pieces in the next outer square
         // 1 point for every piece attacking a center square
 
         // 3 points for every piece in the center four squares
-        ulong bitboard = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+        ulong bitboard = (playerIsWhite) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
         ulong centerBits = 0x1818000000 & bitboard;
         float score = BitboardHelper.GetNumberOfSetBits(centerBits)*3;
 
@@ -251,21 +251,21 @@ public class MyBot : IChessBot
         }
 
         // -1 point for bishop, queen, and knight on the edge
-        score -= BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, board.IsWhiteToMove) |
-                    board.GetPieceBitboard(PieceType.Bishop, board.IsWhiteToMove) |
-                    board.GetPieceBitboard(PieceType.Knight, board.IsWhiteToMove)) &
+        score -= BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, playerIsWhite) |
+                    board.GetPieceBitboard(PieceType.Bishop, playerIsWhite) |
+                    board.GetPieceBitboard(PieceType.Knight, playerIsWhite)) &
                     0xff818181818181ff);
 
         return score/22;
     }
 
-    float UnprotectedPieces(Board board)
+    float UnprotectedPieces(Board board, bool playerIsWhite)
     {
         int score = 0;
         ulong pieces;
 
         // 1 for every piece that is unprotected
-        pieces = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+        pieces = (playerIsWhite) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
         while(pieces > 0)
         {
             int index = BitboardHelper.ClearAndGetIndexOfLSB(ref pieces);
@@ -283,16 +283,16 @@ public class MyBot : IChessBot
             }
         }
 
-        return score/16;
+        return score;
     }
 
-    float LinkedRooks(Board board)
+    float LinkedRooks(Board board, bool playerIsWhite)
     {
         float score = 0;
 
         // Checks whether rooks are linked. If so, gives 5 points
         // 1) Get the rooks
-        PieceList rooks = board.GetPieceList(PieceType.Rook, board.IsWhiteToMove);
+        PieceList rooks = board.GetPieceList(PieceType.Rook, playerIsWhite);
 
         if(rooks.Count == 2)
         {
