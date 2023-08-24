@@ -17,15 +17,6 @@ public struct LUT
     public float score;
 }
 
-public class GameInfo
-{
-    public string FEN { get; set; }
-    public Move[] possibleMoves { get; set; }
-    public Move selectedMove { get; set; }
-    public float[] scores { get; set; }
-    public int move { get; set; }
-}
-
 public class MyBot : IChessBot
 {
     int MAX_DEPTH = 3;
@@ -36,15 +27,6 @@ public class MyBot : IChessBot
     public MyBot()
     {
         hashTable = new Dictionary<ulong, LUT>();
-
-        randomMoveNumber = GetRandomNumber();
-    }
-
-    int GetRandomNumber()
-    {
-        Random rand = new Random();
-        return rand.Next(2, 20);
-
     }
 
     public Move Think(Board board, Timer timer)
@@ -52,13 +34,13 @@ public class MyBot : IChessBot
         Move[] moves = board.GetLegalMoves();
         float[] scores = new float[moves.Length];
 
-        /*if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
+        if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
         {
             MAX_DEPTH = 5;
         } else if(timer.MillisecondsRemaining < 10000)
         {
             MAX_DEPTH = 3;
-        }*/
+        }
 
         for(int index=0; index<moves.Length; ++index)
         {
@@ -69,38 +51,6 @@ public class MyBot : IChessBot
 
         float maxScore = scores.Max();
         int maxIndex = scores.ToList<float>().IndexOf(maxScore);
-
-        /***********************DEBUG ONLY************************/
-        // Randomly export a board, selected move, and options.
-        
-        if(board.PlyCount > randomMoveNumber)
-        {
-            GameInfo info = new GameInfo();
-            info.FEN = board.GetFenString();
-            info.possibleMoves = moves;
-            info.scores = scores;
-            info.selectedMove = moves[maxIndex];
-            info.move = board.PlyCount;
-
-            try
-            {
-                //var options = new JsonSerializerOptions { WriteIndented = true };
-                string jsonString = JsonSerializer.Serialize<GameInfo>(info) + ", ";
-
-                using (StreamWriter outputFile = new StreamWriter("/Users/kkoehler/Downloads/myBot.json", true))
-                {
-                    outputFile.Write(jsonString);
-                }
-            }
-            catch
-            {
-                Console.WriteLine("Failed json");
-            }
-
-            randomMoveNumber = 1000;
-            //randomMoveNumber = GetRandomNumber();
-        }
-        /*********************************************************/
 
         return moves[maxIndex];
     }
@@ -196,25 +146,13 @@ public class MyBot : IChessBot
 
             boardScore.score -= 1.5f*EdgeScore(board, playerIsWhite);
 
-            /*if (board.IsInCheck())
-            {
-                // Who is in check?
-                if (board.SquareIsAttackedByOpponent(board.GetKingSquare(board.IsWhiteToMove)))
-                {
-                    boardScore.score -= 50;
-                }
-                else
-                {
-                    boardScore.score += 50;
-                }
-            }*/
-
-
-            // Checkmate
+            // Check & Checkmate
+            boardScore.score += (board.IsInCheck()) ? 10 : 0;
             boardScore.score += (board.IsInCheckmate()) ? 200 : 0;
 
             // Add this to the LUT
-            AddHash(board, boardScore);
+            hashTable.Add(board.ZobristKey, boardScore);
+            //AddHash(board, boardScore);
         }
 
         return boardScore.score;
@@ -229,7 +167,7 @@ public class MyBot : IChessBot
         // 3 points for every piece in the center four squares
         ulong bitboard = (playerIsWhite) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
         ulong centerBits = 0x1818000000 & bitboard;
-        float score = BitboardHelper.GetNumberOfSetBits(centerBits)*3;
+        float score = BitboardHelper.GetNumberOfSetBits(centerBits)*4;
 
         // 2 points for out square
         centerBits = 0x3c24243c0000 & bitboard;
@@ -279,15 +217,14 @@ public class MyBot : IChessBot
             // convert bitboard index to square and check if square is attacked
             // if attacked, how much support do we have?
             Square currentSquare = new Square(index);
-            //int pieceScore = PieceScore(board.GetPiece(new Square(index)).PieceType);
             if (board.SquareIsAttackedByOpponent(new Square(index)))
             {
-                score += 1; // pieceScore;
+                score += 1;
                 if (board.TrySkipTurn())
                 {
                     if(board.SquareIsAttackedByOpponent(new Square(index)))
                     {
-                        score -= 1; // pieceScore;
+                        score -= 1;
                     }
                     board.UndoSkipTurn();
                 }
@@ -327,45 +264,19 @@ public class MyBot : IChessBot
 
         // Who has the best pieces on the board?
         // {Q=20, R=15, B=8, N=8, P=1}
-        score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Queen, isWhite)) * PieceScore(PieceType.Queen) +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Rook, isWhite)) * PieceScore(PieceType.Rook) +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Bishop, isWhite)) * PieceScore(PieceType.Bishop) +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Knight, isWhite)) * PieceScore(PieceType.Knight) +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Pawn, isWhite)) * PieceScore(PieceType.Pawn);
+        score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Queen, isWhite)) * 20 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Rook, isWhite)) * 15 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Bishop, isWhite)) * 10 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Knight, isWhite)) * 8 +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Pawn, isWhite)) * 1;
 
         return score;
     }
 
-    int PieceScore(PieceType piece)
-    {
-        int score = 0;
-
-        switch (piece)
-        {
-            case PieceType.Queen:
-                score = 20;
-                break;
-            case PieceType.Rook:
-                score = 15;
-                break;
-            case PieceType.Bishop:
-                score = 10;
-                break;
-            case PieceType.Knight:
-                score = 8;
-                break;
-            case PieceType.Pawn:
-                score = 1;
-                break;
-        }
-
-        return score;
-    }
-
-    void AddHash(Board board, LUT lut)
+    /*void AddHash(Board board, LUT lut)
     {
         hashTable.Add(board.ZobristKey, lut);
-    }
+    }*/
 
     bool BoardLUT(Board board, ref LUT lut)
     {
