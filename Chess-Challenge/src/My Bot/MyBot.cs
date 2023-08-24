@@ -115,14 +115,14 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-            float centerWeight = (board.PlyCount < 30) ? 5 : 2.0f;
+            float centerWeight = 3.0f;
             boardScore.score += centerWeight*CenterScore(board,playerIsWhite);
 
             // Decrease score for each unprotected piece
             boardScore.score -= UnprotectedPieces(board,playerIsWhite);
 
             // Piece score
-            boardScore.score += 20*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
+            boardScore.score += 25*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
 
             // Check castling - Not sure how to keep from making a move that removes the ability to castle, but
             // if the move itself is a castle, that is a good thing.
