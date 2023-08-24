@@ -1,15 +1,12 @@
-﻿// TurtleBot: Develops slowly and defensively. Waits for the opponent to run out of time.
-// Control the center of the board.
-// No sacrifices
-// Moves are evaluated based on level of protection
-// Watch for forks
+﻿// TurtleBot: Develops slowly and defensively. It focuses on:
+// - Controlling the center of the board.
+// - Keeping pieces relatively equal
+// - Ensuring pieces are protected
 
 using System;
 using ChessChallenge.API;
 using System.Linq;
 using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
 
 public struct LUT
 {
@@ -32,14 +29,6 @@ public class MyBot : IChessBot
         Move[] moves = board.GetLegalMoves();
         float[] scores = new float[moves.Length];
 
-        /*if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
-        {
-            MAX_DEPTH = 5;
-        } else if(timer.MillisecondsRemaining < 10000)
-        {
-            MAX_DEPTH = 3;
-        }*/
-
         for(int index=0; index<moves.Length; ++index)
         {
             board.MakeMove(moves[index]);
@@ -47,12 +36,10 @@ public class MyBot : IChessBot
             board.UndoMove(moves[index]);
         }
 
-        //float maxScore = scores.Max();
-        //int maxIndex = scores.ToList<float>().IndexOf(scores.Max());
-
         return moves[scores.ToList<float>().IndexOf(scores.Max())];
     }
 
+    // Maximize the position
     float EvaluateMax(Board board, bool playerIsWhite, int depth, float alpha, float beta)
     {
         float maxScore = float.NegativeInfinity;
@@ -86,7 +73,7 @@ public class MyBot : IChessBot
     float EvaluateMin(Board board, bool playerIsWhite, int depth, float alpha, float beta)
     {
         float minScore = float.PositiveInfinity;
-        float score = 0;
+        float score;
 
         if (depth == 0)
         {
@@ -137,11 +124,11 @@ public class MyBot : IChessBot
             // Piece score
             boardScore.score += 20*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
 
-            // Linked rooks
-            boardScore.score += 0.5f*LinkedRooks(board,playerIsWhite);
-
+            // Check castling - Not sure how to keep from making a move that removes the ability to castle, but
+            // if the move itself is a castle, that is a good thing.
             boardScore.score += (board.HasKingsideCastleRight(board.IsWhiteToMove) || board.HasQueensideCastleRight(board.IsWhiteToMove)) ? 3 : 0;
 
+            // Find any key pieces on the edge.
             boardScore.score -= 1.5f*EdgeScore(board, playerIsWhite);
 
             // Check & Checkmate
@@ -156,16 +143,16 @@ public class MyBot : IChessBot
         return boardScore.score;
     }
 
-    float CenterScore(Board board, bool playerIsWhite)
+    // Evaluates control of the center of the board:
+    //   Pieces physically in the center 4 squares
+    //   Pieces in the surrounding 12
+    //   Pieces attacking the center 4
+    int CenterScore(Board board, bool playerIsWhite)
     {
-        // 4 Points for pieces in the center four squares
-        // 2 points for pieces in the next outer square
-        // 1 point for every piece attacking a center square
-
         // 4 points for every piece in the center four squares
         ulong bitboard = (playerIsWhite) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
         //ulong centerBits = 0x1818000000 & bitboard;
-        float score = BitboardHelper.GetNumberOfSetBits(0x1818000000 & bitboard) *4;
+        int score = BitboardHelper.GetNumberOfSetBits(0x1818000000 & bitboard) *4;
 
         // 2 points for out square
         //centerBits = 0x3c24243c0000 & bitboard;
@@ -193,7 +180,8 @@ public class MyBot : IChessBot
         return score;
     }
 
-    float EdgeScore(Board board, bool playerIsWhite)
+    // Number of Queens, bishops, and knights that are on the edge of the board
+    int EdgeScore(Board board, bool playerIsWhite)
     {
         return BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, playerIsWhite) |
                     board.GetPieceBitboard(PieceType.Bishop, playerIsWhite) |
@@ -201,7 +189,8 @@ public class MyBot : IChessBot
                     0xff818181818181ff);
     }
 
-    float UnprotectedPieces(Board board, bool playerIsWhite)
+    // Number of pieces that are currently attacked, but are unprotected
+    int UnprotectedPieces(Board board, bool playerIsWhite)
     {
         int score = 0;
         ulong pieces;
@@ -227,30 +216,6 @@ public class MyBot : IChessBot
                     board.UndoSkipTurn();
                 }
             }
-        }
-
-        return score;
-    }
-
-    float LinkedRooks(Board board, bool playerIsWhite)
-    {
-        float score = 0;
-
-        // Checks whether rooks are linked. If so, gives 5 points
-        // 1) Get the rooks
-        PieceList rooks = board.GetPieceList(PieceType.Rook, playerIsWhite);
-
-        if(rooks.Count == 2)
-        {
-            // 2) Are they on either the same file or same row?
-            bool sameRank = rooks.GetPiece(0).Square.Rank == rooks.GetPiece(1).Square.Rank;
-            bool sameFile = rooks.GetPiece(0).Square.File == rooks.GetPiece(1).Square.File;
-
-            if (sameRank || sameFile)
-            {
-                score += 1;
-            }
-
         }
 
         return score;
