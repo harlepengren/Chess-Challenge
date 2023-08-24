@@ -28,7 +28,7 @@ public class GameInfo
 
 public class MyBot : IChessBot
 {
-    int MAX_DEPTH = 1;
+    int MAX_DEPTH = 3;
     Dictionary<ulong,LUT> hashTable;
     int currentMove;
     int randomMoveNumber;
@@ -73,8 +73,8 @@ public class MyBot : IChessBot
         /***********************DEBUG ONLY************************/
         // Randomly export a board, selected move, and options.
         
-        /*if(board.PlyCount > randomMoveNumber)
-        {*/
+        if(board.PlyCount > randomMoveNumber)
+        {
             GameInfo info = new GameInfo();
             info.FEN = board.GetFenString();
             info.possibleMoves = moves;
@@ -99,7 +99,7 @@ public class MyBot : IChessBot
 
             randomMoveNumber = 1000;
             //randomMoveNumber = GetRandomNumber();
-        //}
+        }
         /*********************************************************/
 
         return moves[maxIndex];
@@ -180,7 +180,7 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-            float centerWeight = 2;
+            float centerWeight = 3;
             boardScore.score += centerWeight*CenterScore(board,playerIsWhite);
 
             // Decrease score for each unprotected piece
@@ -194,6 +194,7 @@ public class MyBot : IChessBot
 
             boardScore.score += (board.HasKingsideCastleRight(board.IsWhiteToMove) || board.HasQueensideCastleRight(board.IsWhiteToMove)) ? 3 : 0;
 
+            boardScore.score -= 1.5f*EdgeScore(board, playerIsWhite);
 
             /*if (board.IsInCheck())
             {
@@ -210,7 +211,7 @@ public class MyBot : IChessBot
 
 
             // Checkmate
-            //boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
+            boardScore.score += (board.IsInCheckmate()) ? 200 : 0;
 
             // Add this to the LUT
             AddHash(board, boardScore);
@@ -253,13 +254,15 @@ public class MyBot : IChessBot
             board.UndoSkipTurn();
         }
 
-        // -1 point for bishop, queen, and knight on the edge
-        score -= BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, playerIsWhite) |
+        return score;
+    }
+
+    float EdgeScore(Board board, bool playerIsWhite)
+    {
+        return BitboardHelper.GetNumberOfSetBits((board.GetPieceBitboard(PieceType.Queen, playerIsWhite) |
                     board.GetPieceBitboard(PieceType.Bishop, playerIsWhite) |
                     board.GetPieceBitboard(PieceType.Knight, playerIsWhite)) &
                     0xff818181818181ff);
-
-        return score;
     }
 
     float UnprotectedPieces(Board board, bool playerIsWhite)
