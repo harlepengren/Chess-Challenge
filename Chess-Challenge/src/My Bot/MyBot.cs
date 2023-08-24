@@ -28,7 +28,7 @@ public class GameInfo
 
 public class MyBot : IChessBot
 {
-    int MAX_DEPTH = 3;
+    int MAX_DEPTH = 1;
     Dictionary<ulong,LUT> hashTable;
     int currentMove;
     int randomMoveNumber;
@@ -52,13 +52,13 @@ public class MyBot : IChessBot
         Move[] moves = board.GetLegalMoves();
         float[] scores = new float[moves.Length];
 
-        if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
+        /*if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
         {
             MAX_DEPTH = 5;
         } else if(timer.MillisecondsRemaining < 10000)
         {
             MAX_DEPTH = 3;
-        }
+        }*/
 
         for(int index=0; index<moves.Length; ++index)
         {
@@ -180,17 +180,20 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-            float centerWeight = 10;
+            float centerWeight = 2;
             boardScore.score += centerWeight*CenterScore(board,playerIsWhite);
 
             // Decrease score for each unprotected piece
             boardScore.score -= UnprotectedPieces(board,playerIsWhite);
 
             // Piece score
-            boardScore.score += 10*(ScoreBoard(board,playerIsWhite) - ScoreBoard(board,!playerIsWhite));
+            boardScore.score += 20*(ScoreBoard(board,board.IsWhiteToMove) - ScoreBoard(board,!board.IsWhiteToMove));
 
             // Linked rooks
             boardScore.score += 0.5f*LinkedRooks(board,playerIsWhite);
+
+            boardScore.score += (board.HasKingsideCastleRight(board.IsWhiteToMove) || board.HasQueensideCastleRight(board.IsWhiteToMove)) ? 3 : 0;
+
 
             /*if (board.IsInCheck())
             {
@@ -207,7 +210,7 @@ public class MyBot : IChessBot
 
 
             // Checkmate
-            boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
+            //boardScore.score += (board.IsInCheckmate()) ? 100 : 0;
 
             // Add this to the LUT
             AddHash(board, boardScore);
@@ -256,7 +259,7 @@ public class MyBot : IChessBot
                     board.GetPieceBitboard(PieceType.Knight, playerIsWhite)) &
                     0xff818181818181ff);
 
-        return score/22;
+        return score;
     }
 
     float UnprotectedPieces(Board board, bool playerIsWhite)
@@ -265,19 +268,24 @@ public class MyBot : IChessBot
         ulong pieces;
 
         // 1 for every piece that is unprotected
-        pieces = (playerIsWhite) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
+        pieces = (board.IsWhiteToMove) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
         while(pieces > 0)
         {
             int index = BitboardHelper.ClearAndGetIndexOfLSB(ref pieces);
 
             // convert bitboard index to square and check if square is attacked
             // if attacked, how much support do we have?
-            if(board.SquareIsAttackedByOpponent(new Square(index)))
+            Square currentSquare = new Square(index);
+            //int pieceScore = PieceScore(board.GetPiece(new Square(index)).PieceType);
+            if (board.SquareIsAttackedByOpponent(new Square(index)))
             {
-                score += 1;
+                score += 1; // pieceScore;
                 if (board.TrySkipTurn())
                 {
-                    score -= 1;
+                    if(board.SquareIsAttackedByOpponent(new Square(index)))
+                    {
+                        score -= 1; // pieceScore;
+                    }
                     board.UndoSkipTurn();
                 }
             }
@@ -316,13 +324,39 @@ public class MyBot : IChessBot
 
         // Who has the best pieces on the board?
         // {Q=20, R=15, B=8, N=8, P=1}
-        score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Queen, isWhite)) * 20 +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Rook, isWhite)) * 15 +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Bishop, isWhite)) * 10 +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Knight, isWhite)) * 8 +
-                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Pawn, isWhite)) * 1;
+        score += BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Queen, isWhite)) * PieceScore(PieceType.Queen) +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Rook, isWhite)) * PieceScore(PieceType.Rook) +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Bishop, isWhite)) * PieceScore(PieceType.Bishop) +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Knight, isWhite)) * PieceScore(PieceType.Knight) +
+                 BitboardHelper.GetNumberOfSetBits(board.GetPieceBitboard(PieceType.Pawn, isWhite)) * PieceScore(PieceType.Pawn);
 
-        return score/94;
+        return score;
+    }
+
+    int PieceScore(PieceType piece)
+    {
+        int score = 0;
+
+        switch (piece)
+        {
+            case PieceType.Queen:
+                score = 20;
+                break;
+            case PieceType.Rook:
+                score = 15;
+                break;
+            case PieceType.Bishop:
+                score = 10;
+                break;
+            case PieceType.Knight:
+                score = 8;
+                break;
+            case PieceType.Pawn:
+                score = 1;
+                break;
+        }
+
+        return score;
     }
 
     void AddHash(Board board, LUT lut)
