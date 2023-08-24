@@ -115,7 +115,7 @@ public class MyBot : IChessBot
 
             // We may need to adjust the weights of these
             // Who controls the center?
-            float centerWeight = 3;
+            float centerWeight = (board.PlyCount < 30) ? 5 : 2.0f;
             boardScore.score += centerWeight*CenterScore(board,playerIsWhite);
 
             // Decrease score for each unprotected piece
