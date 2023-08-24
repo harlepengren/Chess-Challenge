@@ -21,8 +21,6 @@ public class MyBot : IChessBot
 {
     int MAX_DEPTH = 3;
     Dictionary<ulong,LUT> hashTable;
-    int currentMove;
-    int randomMoveNumber;
 
     public MyBot()
     {
@@ -34,13 +32,13 @@ public class MyBot : IChessBot
         Move[] moves = board.GetLegalMoves();
         float[] scores = new float[moves.Length];
 
-        if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
+        /*if(BitboardHelper.GetNumberOfSetBits(board.AllPiecesBitboard) < 12)
         {
             MAX_DEPTH = 5;
         } else if(timer.MillisecondsRemaining < 10000)
         {
             MAX_DEPTH = 3;
-        }
+        }*/
 
         for(int index=0; index<moves.Length; ++index)
         {
@@ -49,10 +47,10 @@ public class MyBot : IChessBot
             board.UndoMove(moves[index]);
         }
 
-        float maxScore = scores.Max();
-        int maxIndex = scores.ToList<float>().IndexOf(maxScore);
+        //float maxScore = scores.Max();
+        //int maxIndex = scores.ToList<float>().IndexOf(scores.Max());
 
-        return moves[maxIndex];
+        return moves[scores.ToList<float>().IndexOf(scores.Max())];
     }
 
     float EvaluateMax(Board board, bool playerIsWhite, int depth, float alpha, float beta)
@@ -160,18 +158,18 @@ public class MyBot : IChessBot
 
     float CenterScore(Board board, bool playerIsWhite)
     {
-        // 3 Points for pieces in the center four squares
+        // 4 Points for pieces in the center four squares
         // 2 points for pieces in the next outer square
         // 1 point for every piece attacking a center square
 
-        // 3 points for every piece in the center four squares
+        // 4 points for every piece in the center four squares
         ulong bitboard = (playerIsWhite) ? board.WhitePiecesBitboard : board.BlackPiecesBitboard;
-        ulong centerBits = 0x1818000000 & bitboard;
-        float score = BitboardHelper.GetNumberOfSetBits(centerBits)*4;
+        //ulong centerBits = 0x1818000000 & bitboard;
+        float score = BitboardHelper.GetNumberOfSetBits(0x1818000000 & bitboard) *4;
 
         // 2 points for out square
-        centerBits = 0x3c24243c0000 & bitboard;
-        score += BitboardHelper.GetNumberOfSetBits(centerBits) * 2;
+        //centerBits = 0x3c24243c0000 & bitboard;
+        score += BitboardHelper.GetNumberOfSetBits(0x3c24243c0000 & bitboard) * 2;
 
         // 1 points for every piece attacking but not in the center four squares
         Square[] centerSquares = new Square[] {new Square("d4"),
@@ -272,11 +270,6 @@ public class MyBot : IChessBot
 
         return score;
     }
-
-    /*void AddHash(Board board, LUT lut)
-    {
-        hashTable.Add(board.ZobristKey, lut);
-    }*/
 
     bool BoardLUT(Board board, ref LUT lut)
     {
